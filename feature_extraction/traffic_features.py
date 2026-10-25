@@ -102,29 +102,45 @@ for flow_key, flow_stats in all_flows.items():
 
 def expire_old_flows(all_flows,timeout_seconds = 60):
     current_time = time.time()
+    expired_flows = []
 
-    expired_keys = [
-        flow_key
-        for flow_key,stats in all_flows.items()
-        if current_time - stats["last_seen"] > timeout_seconds    
-        ]
+    for flow_key, stats in list(all_flows.items()):
+        if current_time - stats["last_seen"] > timeout_seconds:
+            final_features = calculate_flow_features(stats)
 
-    for flow_key in expired_keys:
-        del all_flows[flow_key]
-    return len(expired_keys)
+            expired_flows.append({
+                "flow_key": flow_key,
+                "features": final_features,
+            })
+            del all_flows[flow_key]
+    return expired_flows
 
 test_time = time.time()
 
-test_flow = {
+
+test_time = time.time()
+
+all_flows = {
     ("192.168.1.50", 7000, "192.168.1.60", 80, "TCP"): {
-        "packet_count": 1,
-        "total_bytes": 200,
-        "first_seen": test_time - 120,
+        "packet_count": 3,
+        "total_bytes": 900,
+        "first_seen": test_time - 125,
         "last_seen": test_time - 120,
-    }
+    },
+
+    ("192.168.1.70", 8000, "192.168.1.80", 443, "TCP"): {
+        "packet_count": 4,
+        "total_bytes": 2000,
+        "first_seen": test_time - 10,
+        "last_seen": test_time - 5,
+    },
 }
 
-removed = expire_old_flows(test_flow, timeout_seconds=60)
+completed_flows = expire_old_flows(
+    all_flows,
+    timeout_seconds=60,
+)
 
-print("Expired flows:", removed)
-print("Remaining flows:", len(test_flow))
+print("Completed flows:", completed_flows)
+print("Remaining active flows:", len(all_flows))
+print("Active flow keys:", list(all_flows.keys()))
